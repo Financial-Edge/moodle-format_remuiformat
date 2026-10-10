@@ -28,7 +28,7 @@ require_once($CFG->dirroot.'/course/format/remuiformat/classes/mod_stats.php');
 /**
  * Remui format renderer class
  */
-class format_remuiformat_renderer extends format_section_renderer_base {
+class format_remuiformat_renderer extends \core_courseformat\output\section_renderer {
 
     /**
      * Our course format object as defined in lib.php.
@@ -318,6 +318,75 @@ class format_remuiformat_renderer extends format_section_renderer_base {
     }
 
     /**
+     * Generate the action menu for the edit controls of a section.
+     *
+     * Overrides core's section_edit_control_menu(), which can not be used any more (Moodle 4.0, MDL-72656) and emits
+     * debugging. The markup is the same as core's.
+     *
+     * @param array $controls The edit control items from section_edit_control_items
+     * @param stdClass $course The course entry from DB (not used)
+     * @param stdClass $section The course_section entry from DB
+     * @return string HTML to output.
+     */
+    protected function section_edit_control_menu($controls, $course, $section) {
+        $o = "";
+        if (!empty($controls)) {
+            $menu = new action_menu();
+            $menu->set_menu_trigger(get_string('edit'));
+            $menu->attributes['class'] .= ' section-actions';
+            foreach ($controls as $value) {
+                $url = empty($value['url']) ? '' : $value['url'];
+                $icon = empty($value['icon']) ? '' : $value['icon'];
+                $name = empty($value['name']) ? '' : $value['name'];
+                $attr = empty($value['attr']) ? array() : $value['attr'];
+                $class = empty($value['pixattr']['class']) ? '' : $value['pixattr']['class'];
+                $al = new action_menu_link_secondary(
+                    new moodle_url($url),
+                    new pix_icon($icon, '', null, array('class' => "smallicon " . $class)),
+                    $name,
+                    $attr
+                );
+                $menu->add($al);
+            }
+
+            $o .= html_writer::div(
+                $this->render($menu),
+                'section_action_menu',
+                array('data-sectionid' => $section->id)
+            );
+        }
+
+        return $o;
+    }
+
+    /**
+     * Get core's edit control items for a section, from the core_courseformat controlmenu output component.
+     *
+     * Replaces the parent section_edit_control_items(), which is deprecated since Moodle 4.0 (MDL-72656) and emits
+     * debugging. Same implementation as core's.
+     *
+     * @param stdClass $course The course entry from DB
+     * @param stdClass $section The course_section entry from DB
+     * @param bool $onsectionpage true if being printed on a section page
+     * @return array of edit control items
+     */
+    protected function get_core_section_edit_control_items($course, $section, $onsectionpage = false) {
+        $format = course_get_format($course);
+        $modinfo = $format->get_modinfo();
+
+        if ($onsectionpage) {
+            $format->set_section_number($section->section);
+        }
+
+        // We need a section_info object, not a record.
+        $section = $modinfo->get_section_info($section->section);
+
+        $widgetclass = $format->get_output_classname('content\\section\\controlmenu');
+        $widget = new $widgetclass($format, $section);
+        return $widget->section_control_items();
+    }
+
+    /**
      * Generate the content to displayed on the right part of a section
      * before course modules are included
      *
@@ -379,7 +448,7 @@ class format_remuiformat_renderer extends format_section_renderer_base {
             }
         }
 
-        $parentcontrols = parent::section_edit_control_items($course, $section, $onsectionpage);
+        $parentcontrols = $this->get_core_section_edit_control_items($course, $section, $onsectionpage);
 
         // If the edit key exists, we are going to insert our controls after it.
         if (array_key_exists("edit", $parentcontrols)) {
@@ -398,6 +467,21 @@ class format_remuiformat_renderer extends format_section_renderer_base {
         } else {
             return array_merge($controls, $parentcontrols);
         }
+    }
+
+    /**
+     * Displays availability information for the section (hidden, not available unless, etc.).
+     *
+     * Overrides core's section_availability(), which is deprecated since Moodle 4.0 (and emits debugging); the output is the
+     * same but it uses this renderer's own section_availability_message().
+     *
+     * @param section_info $section
+     * @return string
+     */
+    public function section_availability($section) {
+        $context = context_course::instance($section->course);
+        $canviewhidden = has_capability('moodle/course:viewhiddensections', $context);
+        return html_writer::div($this->section_availability_message($section, $canviewhidden), 'section_availability');
     }
 
     /**
