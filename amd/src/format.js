@@ -27,7 +27,8 @@ define(['jquery'], function($) {
             var sectionlayout_val;
             var sectionbackground_val;
             var layout_value = $("#id_remuicourseformat").val();
-            window.localStorage.setItem('coursedisplay', $("#id_coursedisplay").val());
+            // Kept in memory rather than localStorage, it is only needed while this form is open.
+            var oldcoursedisplay = $("#id_coursedisplay").val();
             // Hide and show the course settings on course format selection.
             $("#id_remuicourseformat").change(function() {
                 var layout_value = $("#id_remuicourseformat").val();
@@ -47,7 +48,6 @@ define(['jquery'], function($) {
                     // LIST.
                 } else {
                     $("#id_coursedisplay option[value='0']").show();
-                    var oldcoursedisplay = window.localStorage.getItem('coursedisplay');
                     $('#id_coursedisplay').val(oldcoursedisplay).trigger('change');
                     $("#id_remuiteacherdisplay").parent().parent().show();
                     $("#id_remuienablecardbackgroundimg").parent().parent().hide();

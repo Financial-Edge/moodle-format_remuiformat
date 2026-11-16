@@ -64,9 +64,11 @@
     </ul>
 </div>
     {{#js}}
-      require(['jquery', 'core/storagewrapper'], function(jQuery, StorageWrapper) {
+      require(['jquery', 'core/storagewrapper', 'format_remuiformat/consent'], function(jQuery, StorageWrapper, Consent) {
+          // Section state is only kept in localStorage when CookieYes functional cookies are accepted.
+          var localStorage = Consent.functionalLocalStorage();
           // Moodle localstorage wrapper.
-          var edstorage = new StorageWrapper(window.localStorage);
+          var edstorage = Consent.functionalStorageWrapper(StorageWrapper);
 
           // save the current choice by admin - expanded or collapsed
           var formatlabel = {{{ courseid }}} + '_' + {{{ user_id }}} + '_defaultview';
@@ -162,7 +164,9 @@
 {{/editing}}
 {{#editing}}
     {{#js}}
-      require(['jquery'], function(jQuery) {
+      require(['jquery', 'format_remuiformat/consent'], function(jQuery, Consent) {
+          // Section state is only kept in localStorage when CookieYes functional cookies are accepted.
+          var localStorage = Consent.functionalLocalStorage();
           jQuery('.remui-format-list .card-title .float-right').click(function(){
               var iconparent = jQuery(this).parent();
               console.log(iconparent);
