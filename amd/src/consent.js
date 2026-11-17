@@ -63,26 +63,54 @@ define([], function() {
         }
     };
 
+    /**
+     * A store whose methods check functional consent on every call, so withdrawing or giving consent
+     * without a page reload takes effect straight away.
+     *
+     * @param {Function} getStore Returns the real store, only called with consent.
+     * @param {string[]} methods Method names to pass through.
+     * @return {Object}
+     */
+    function consentStore(getStore, methods) {
+        var store = {};
+        methods.forEach(function(method) {
+            store[method] = function() {
+                if (!hasConsent('functional')) {
+                    return nostorage[method].apply(nostorage, arguments);
+                }
+                var real = getStore();
+                return real[method].apply(real, arguments);
+            };
+        });
+        return store;
+    }
+
     return {
         hasConsent: hasConsent,
 
         /**
-         * localStorage when functional cookies are accepted, otherwise a store that keeps nothing.
+         * localStorage that is only read and written while functional cookies are accepted.
          *
-         * @return {Storage|Object}
+         * @return {Object} With getItem, setItem and removeItem.
          */
         functionalLocalStorage: function() {
-            return hasConsent('functional') ? window.localStorage : nostorage;
+            return consentStore(function() {
+                return window.localStorage;
+            }, ['getItem', 'setItem', 'removeItem']);
         },
 
         /**
-         * A core/storagewrapper over localStorage when functional cookies are accepted, otherwise a store that keeps nothing.
+         * A core/storagewrapper over localStorage that is only used while functional cookies are accepted.
          *
          * @param {Function} StorageWrapper The core/storagewrapper class.
-         * @return {Object}
+         * @return {Object} With get and set.
          */
         functionalStorageWrapper: function(StorageWrapper) {
-            return hasConsent('functional') ? new StorageWrapper(window.localStorage) : nostorage;
+            var wrapper = null;
+            return consentStore(function() {
+                wrapper = wrapper || new StorageWrapper(window.localStorage);
+                return wrapper;
+            }, ['get', 'set']);
         }
     };
 });
